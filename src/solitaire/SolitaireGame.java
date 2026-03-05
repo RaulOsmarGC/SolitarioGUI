@@ -11,8 +11,8 @@ import java.util.ArrayList;
  * @version (2025-2)
  */
 public class SolitaireGame {
-    ArrayList<TableauDeck> tableau = new ArrayList<>();
-    ArrayList<FoundationDeck> foundation = new ArrayList<>();
+    TableauDeck[] tableau = new TableauDeck[7];
+    FoundationDeck[] foundation = new FoundationDeck[4];
     FoundationDeck lastFoundationUpdated;
     DrawPile drawPile;
     WastePile wastePile;
@@ -24,12 +24,11 @@ public class SolitaireGame {
         createFoundations();
         wastePile.addCartas(drawPile.retirarCartas());
     }
-
     /**
      * Move cards from Waste pile to Draw Pile.
      */
     public void reloadDrawPile() {
-        ArrayList<CartaInglesa> cards = wastePile.emptyPile();
+        Pila<CartaInglesa> cards = wastePile.emptyPile();
         drawPile.recargar(cards);
     }
 
@@ -37,7 +36,7 @@ public class SolitaireGame {
      * Move cards from Draw pile to Waste Pile.
      */
     public void drawCards() {
-        ArrayList<CartaInglesa> cards = drawPile.retirarCartas();
+        Pila<CartaInglesa> cards = drawPile.retirarCartas();
         wastePile.addCartas(cards);
     }
 
@@ -49,7 +48,7 @@ public class SolitaireGame {
      */
     public boolean moveWasteToTableau(int tableauDestino) {
         boolean movimientoRealizado = false;
-        TableauDeck destino = tableau.get(tableauDestino - 1);
+        TableauDeck destino = tableau[tableauDestino - 1];
         if (moveWasteToTableau(destino)) {
             movimientoRealizado = true;
         }
@@ -66,27 +65,23 @@ public class SolitaireGame {
      */
     public boolean moveTableauToTableau(int tableauFuente, int tableauDestino) {
         boolean movimientoRealizado = false;
-        TableauDeck fuente = tableau.get(tableauFuente - 1);
+        TableauDeck fuente = tableau[tableauFuente - 1];
         if (!fuente.isEmpty()) {
-            TableauDeck destino = tableau.get(tableauDestino - 1);
+            TableauDeck destino = tableau[tableauDestino - 1];
 
             int valorQueDebeTenerLaCartaInicialDeLaFuente;
-            CartaInglesa cartaUltimaDelDestino; // aqui se coloca la fuente
+            CartaInglesa cartaUltimaDelDestino;
             if (!destino.isEmpty()) {
-                // si hay cartas en el destino, la ultima y primer debe concordar
                 cartaUltimaDelDestino = destino.verUltimaCarta();
                 valorQueDebeTenerLaCartaInicialDeLaFuente = cartaUltimaDelDestino.getValor() - 1;
             } else {
-                // si el destino está vacío, solo puede colocar rey
                 valorQueDebeTenerLaCartaInicialDeLaFuente = 13;
             }
-            // ver que carta es la del inicio del bloque
             CartaInglesa cartaInicialDePrueba = fuente.viewCardStartingAt(valorQueDebeTenerLaCartaInicialDeLaFuente);
             if (cartaInicialDePrueba != null && destino.sePuedeAgregarCarta(cartaInicialDePrueba)) {
-                ArrayList<CartaInglesa> cartas = fuente.removeStartingAt(valorQueDebeTenerLaCartaInicialDeLaFuente);
+                Pila<CartaInglesa> cartas = fuente.removeStartingAt(valorQueDebeTenerLaCartaInicialDeLaFuente);
                 if (destino.agregarBloqueDeCartas(cartas)) {
                     if (!fuente.isEmpty()) {
-                        // Voltear la carta que se destapa en el Tableau
                         fuente.verUltimaCarta().makeFaceUp();
                     }
                     movimientoRealizado = true;
@@ -99,7 +94,6 @@ public class SolitaireGame {
         return movimientoRealizado;
     }
 
-
     /**
      * Tomar la carta de Tableau y colocarla en el Foundation.
      *
@@ -109,12 +103,12 @@ public class SolitaireGame {
     public boolean moveTableauToFoundation(int numero) {
         boolean movimientoRealizado = false;
 
-        TableauDeck fuente = tableau.get(numero - 1);
+        TableauDeck fuente = tableau[numero - 1];
         CartaInglesa carta = fuente.removerUltimaCarta();
         if (moveCartaToFoundation(carta)) {
             movimientoRealizado = true;
         } else {
-            // regresar la carta al tableau porque no se puede hacer el movimiento
+            //regresar la carta al tableau porque no se puede hacer el movimiento
             fuente.agregarCarta(carta);
         }
         return movimientoRealizado;
@@ -131,7 +125,7 @@ public class SolitaireGame {
 
         CartaInglesa carta = wastePile.verCarta();
         if (moveCartaToTableau(carta, tableau)) {
-            // si es movimiento válido, elimina la carta de la pila
+            //si es movimiento válido, elimina la carta de la pila
             carta = wastePile.getCarta();
             movimientoRealizado = true;
         }
@@ -143,12 +137,13 @@ public class SolitaireGame {
      *
      * @return true si se pudo hacer el movimiento.
      */
+
     public boolean moveWasteToFoundation() {
         boolean movimientoRealizado = false;
 
         CartaInglesa carta = wastePile.verCarta();
         if (moveCartaToFoundation(carta)) {
-            // si es movimiento válido, elimina la carta de la pila
+            //si es movimiento válido, elimina la carta de la pila
             carta = wastePile.getCarta();
             movimientoRealizado = true;
         }
@@ -174,7 +169,7 @@ public class SolitaireGame {
      */
     private boolean moveCartaToFoundation(CartaInglesa carta) {
         int cualFoundation = carta.getPalo().ordinal();
-        FoundationDeck destino = foundation.get(cualFoundation);
+        FoundationDeck destino = foundation[cualFoundation];
         lastFoundationUpdated = destino;
         return destino.agregarCarta(carta);
     }
@@ -192,7 +187,7 @@ public class SolitaireGame {
                 gameOver = false;
             } else {
                 CartaInglesa ultimaCarta = foundation.getUltimaCarta();
-                // si la última carta no es rey, no se ha terminado
+                //si la ultima carta no es rey, no se ha terminado
                 if (ultimaCarta.getValor() != 13) {
                     gameOver = false;
                 }
@@ -202,16 +197,17 @@ public class SolitaireGame {
     }
 
     private void createFoundations() {
+        int i = 0;
         for (Palo palo : Palo.values()) {
-            foundation.add(new FoundationDeck(palo));
+            foundation[i] = new FoundationDeck(palo);
+            i++;
         }
     }
 
     private void createTableaux() {
         for (int i = 0; i < 7; i++) {
-            TableauDeck tableauDeck = new TableauDeck();
-            tableauDeck.inicializar(drawPile.getCartas(i + 1));
-            tableau.add(tableauDeck);
+            tableau[i] = new TableauDeck();
+            tableau[i].inicializar(drawPile.getCartas(i + 1));
         }
     }
 
@@ -219,7 +215,8 @@ public class SolitaireGame {
         return drawPile;
     }
 
-    public ArrayList<TableauDeck> getTableau() {
+    //arreglo normal
+    public TableauDeck[] getTableau() {
         return tableau;
     }
 
