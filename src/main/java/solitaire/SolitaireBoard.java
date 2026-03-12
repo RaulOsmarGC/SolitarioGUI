@@ -4,6 +4,7 @@ import DeckOfCards.CartaInglesa;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.input.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -43,6 +44,19 @@ public class SolitaireBoard extends BorderPane {
         this.setStyle("-fx-background-color: #006400;"); //mesa verde oscuro
         this.setPadding(new Insets(MARGIN));
 
+        //permite que este panel reciba eventos de teclado
+        this.setFocusTraversable(true);
+        this.setOnKeyPressed(e -> {
+            //si presionan la tecla R
+            if (e.getCode() == KeyCode.R) {
+                game.reiniciarJuego();
+                refreshGame();
+            }
+        });
+
+        //si haces clic en el fondo de la mesa, aseguras que el teclado siga activo
+        this.setOnMouseClicked(e -> this.requestFocus());
+
         //construcción de las zonas visuales
         setupTopZone();
         setupBottomZone();
@@ -51,22 +65,46 @@ public class SolitaireBoard extends BorderPane {
         refreshGame();
     }
 
-    //configura la parte superior mazo, descarte y bases
+    //configura la parte superior mazo, descarte, bases y botones
     private void setupTopZone() {
         HBox topBox = new HBox(MARGIN);
         topBox.setPadding(new Insets(MARGIN));
         topBox.setAlignment(Pos.CENTER_LEFT);
 
+        //boton de deshacer o undo
+        Button btnUndo = new Button("Deshacer");
+        btnUndo.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-background-color: #f4a261; -fx-text-fill: white;");
+        btnUndo.setOnAction(e -> {
+            game.undo();
+            refreshGame();
+            this.requestFocus();
+        });
+
+        //boton de reinicio
+        Button btnRestart = new Button("Reiniciar (R)");
+        btnRestart.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-background-color: #e63946; -fx-text-fill: white;");
+        btnRestart.setOnAction(e -> {
+            game.reiniciarJuego();
+            refreshGame();
+            this.requestFocus();
+        });
+
+        //HBox para agrupar los botones
+        HBox botonesBox = new HBox(10, btnRestart, btnUndo);
+
         //zona del mazo
         drawPileView = new StackPane();
         configureSlot(drawPileView);
-        drawPileView.setOnMouseClicked(e -> handleDrawPileClick());
+        drawPileView.setOnMouseClicked(e -> {
+            handleDrawPileClick();
+            this.requestFocus();
+        });
 
         //zona del descarte
         wastePileView = new StackPane();
         configureSlot(wastePileView);
 
-        //espaciador invisible para empujar las bases  a la derecha
+        //espaciador invisible para empujar las bases a la derecha
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
@@ -85,7 +123,7 @@ public class SolitaireBoard extends BorderPane {
             foundationBox.getChildren().add(fView);
         }
 
-        topBox.getChildren().addAll(drawPileView, wastePileView, spacer, foundationBox);
+        topBox.getChildren().addAll(botonesBox, drawPileView, wastePileView, spacer, foundationBox);
         this.setTop(topBox);
     }
 
@@ -174,13 +212,11 @@ public class SolitaireBoard extends BorderPane {
             configureSlot(fView);
         }
 
-        //obtenemos el mazo lógico
-        ArrayList<FoundationDeck> foundations = game.getFoundations();
+        //obtenemos el arreglo lógico (ya no es ArrayList)
+        FoundationDeck[] foundations = game.getFoundations();
 
         for (int i = 0; i < 4; i++) {
-            //obtenemos el mazo lógico
-            FoundationDeck deck = foundations.get(i);
-            //obtenemos la vista correspondiente
+            FoundationDeck deck = foundations[i];
             StackPane fView = foundationViews.get(i);
 
             //si hay cartas, dibujamos la última
@@ -191,7 +227,7 @@ public class SolitaireBoard extends BorderPane {
         }
 
         //actualizar columnas/tablero
-        List<TableauDeck> tableaux = game.getTableau();
+        TableauDeck[] tableaux = game.getTableau();
         for (int i = 0; i < 7; i++) {
             VBox tView = tableauViews.get(i);
             var placeholder = tView.getChildren().get(0);
@@ -199,9 +235,12 @@ public class SolitaireBoard extends BorderPane {
             //mantener el placeholder al fondo
             tView.getChildren().add(placeholder);
 
-            TableauDeck deck = tableaux.get(i);
+            TableauDeck deck = tableaux[i];
 
-            for (CartaInglesa carta : deck.getCards()) {
+            //reemplazamos el for-each por el while con la pila volteada
+            Pila<CartaInglesa> temporal = deck.getCards().voltear();
+            while (!temporal.isEmpty()) {
+                CartaInglesa carta = temporal.pop();
                 CardView cv = new CardView(carta);
 
                 //solo las cartas boca arriba se pueden arrastrar

@@ -11,11 +11,13 @@ import java.util.ArrayList;
  * @version (2025-2)
  */
 public class SolitaireGame {
-    ArrayList<TableauDeck> tableau = new ArrayList<>();
-    ArrayList<FoundationDeck> foundation = new ArrayList<>();
+    TableauDeck[] tableau = new TableauDeck[7];
+    FoundationDeck[] foundation = new FoundationDeck[4];
     FoundationDeck lastFoundationUpdated;
     DrawPile drawPile;
     WastePile wastePile;
+    Pila<Movimiento> historialMovimientos = new Pila<>();
+
 
     public SolitaireGame() {
         drawPile = new DrawPile();
@@ -25,34 +27,39 @@ public class SolitaireGame {
         wastePile.addCartas(drawPile.retirarCartas());
     }
 
-    /**
-     * Move cards from Waste pile to Draw Pile.
-     */
+    //mueve cartas del descarte a la de reserva
     public void reloadDrawPile() {
-        ArrayList<CartaInglesa> cards = wastePile.emptyPile();
+        Pila<CartaInglesa> cards = wastePile.emptyPile();
         drawPile.recargar(cards);
+        historialMovimientos.push(new Movimiento("RELOAD", -1, -1, cards.size(), false));
     }
 
-    /**
-     * Move cards from Draw pile to Waste Pile.
-     */
+
+    //mueve cartas de la reserva al descrate
     public void drawCards() {
-        ArrayList<CartaInglesa> cards = drawPile.retirarCartas();
+        Pila<CartaInglesa> cards = drawPile.retirarCartas();
         wastePile.addCartas(cards);
+        historialMovimientos.push(new Movimiento("DRAW", -1, -1, cards.size(), false));
     }
 
-    /**
-     * Tomar la carta del Waste pile y ponerla en el tableau
-     *
-     * @param tableauDestino donde se coloca la carta
-     * @return true si se pudo hacer el movimiento, false si no
-     */
+    //tomar la carta de la pila de descarte y ponerla en el tablero
     public boolean moveWasteToTableau(int tableauDestino) {
         boolean movimientoRealizado = false;
-        TableauDeck destino = tableau.get(tableauDestino - 1);
-        if (moveWasteToTableau(destino)) {
+        TableauDeck destino = tableau[tableauDestino - 1];
+
+        //vemos la carta del descarte
+        CartaInglesa carta = wastePile.verCarta();
+
+        //intentamos agregarla directamente al tablero
+        if (carta != null && destino.agregarCarta(carta)) {
+            //si podemos, la sacamos definitivamente del descarte
+            wastePile.getCarta();
             movimientoRealizado = true;
+
+            //registro descarte a tablero
+            historialMovimientos.push(new Movimiento("WASTE_TO_TABLEAU", -1, tableauDestino - 1, 1, false));
         }
+
         return movimientoRealizado;
     }
 
@@ -66,96 +73,85 @@ public class SolitaireGame {
      */
     public boolean moveTableauToTableau(int tableauFuente, int tableauDestino) {
         boolean movimientoRealizado = false;
-        TableauDeck fuente = tableau.get(tableauFuente - 1);
-        if (!fuente.isEmpty()) {
-            TableauDeck destino = tableau.get(tableauDestino - 1);
+        TableauDeck fuente = tableau[tableauFuente - 1];
 
+        if (!fuente.isEmpty()) {
+            TableauDeck destino = tableau[tableauDestino - 1];
             int valorQueDebeTenerLaCartaInicialDeLaFuente;
-            CartaInglesa cartaUltimaDelDestino; // aqui se coloca la fuente
+            CartaInglesa cartaUltimaDelDestino;
+
             if (!destino.isEmpty()) {
-                // si hay cartas en el destino, la ultima y primer debe concordar
-                cartaUltimaDelDestino = destino.verUltimaCarta();
+                cartaUltimaDelDestino = destino.getUltimaCarta();
                 valorQueDebeTenerLaCartaInicialDeLaFuente = cartaUltimaDelDestino.getValor() - 1;
             } else {
-                // si el destino está vacío, solo puede colocar rey
                 valorQueDebeTenerLaCartaInicialDeLaFuente = 13;
             }
-            // ver que carta es la del inicio del bloque
+
             CartaInglesa cartaInicialDePrueba = fuente.viewCardStartingAt(valorQueDebeTenerLaCartaInicialDeLaFuente);
+            boolean destaparaCarta = false;
+
             if (cartaInicialDePrueba != null && destino.sePuedeAgregarCarta(cartaInicialDePrueba)) {
-                ArrayList<CartaInglesa> cartas = fuente.removeStartingAt(valorQueDebeTenerLaCartaInicialDeLaFuente);
+                Pila<CartaInglesa> cartas = fuente.removeStartingAt(valorQueDebeTenerLaCartaInicialDeLaFuente);
+
+                //guardamos el tamaño antes de que la pila se vacie
+                int cantidadMovida = cartas.size();
+
                 if (destino.agregarBloqueDeCartas(cartas)) {
-                    if (!fuente.isEmpty()) {
-                        // Voltear la carta que se destapa en el Tableau
-                        fuente.verUltimaCarta().makeFaceUp();
+                    if (!fuente.isEmpty() && !fuente.getUltimaCarta().isFaceup()) {
+                        fuente.getUltimaCarta().makeFaceUp();
+                        destaparaCarta = true;
                     }
                     movimientoRealizado = true;
+                    //usamos la variable cantidadMovida en lugar de cartas.size()
+                    historialMovimientos.push(new Movimiento("TABLEAU_TO_TABLEAU", tableauFuente - 1, tableauDestino - 1, cantidadMovida, destaparaCarta));
+                } else {
+                    //por si algo fallara, devolvemos las cartas a su origen
+                    fuente.devolverBloque(cartas);
                 }
             }
-
         }
-
-
         return movimientoRealizado;
     }
-
-
-    /**
-     * Tomar la carta de Tableau y colocarla en el Foundation.
-     *
-     * @param numero de tableau donde se moverá la carta (1-7)
-     * @return true si se pudo move la carta, false si no
-     */
-    // SolitaireGame.java
-
 
     public boolean moveTableauToFoundation(int numero) {
         boolean movimientoRealizado = false;
-        TableauDeck fuente = tableau.get(numero - 1);
-        CartaInglesa carta = fuente.removerUltimaCarta();
+        TableauDeck fuente = tableau[numero - 1];
 
-        if (moveCartaToFoundation(carta)) {
-            if (!fuente.isEmpty()) {
-                fuente.verUltimaCarta().makeFaceUp();
+        //si la columna esta vacia, no hacemos nada
+        if (fuente.isEmpty()) return false;
+
+        //solo vemos la carta, no la sacamos todavia
+        CartaInglesa carta = fuente.getUltimaCarta();
+
+        //intentamos enviarla a la base
+        if (carta != null && moveCartaToFoundation(carta)) {
+            //si entra, ahora si la eliminamos del tablero
+            fuente.getCards().pop();
+
+            //verificamos si la nueva carta en la cima necesita ser volteada
+            boolean destaparaCarta = false;
+            if (!fuente.isEmpty() && !fuente.getUltimaCarta().isFaceup()) {
+                fuente.getUltimaCarta().makeFaceUp();
+                //guardamos este dato para el undo
+                destaparaCarta = true;
             }
+
             movimientoRealizado = true;
-        } else {
-            fuente.getCards().add(carta);
+            //registramos el movimiento
+            historialMovimientos.push(new Movimiento("TABLEAU_TO_FOUNDATION", numero - 1, carta.getPalo().ordinal(), 1, destaparaCarta));
         }
+        //si la base no la acepto, no hacemos NADA
         return movimientoRealizado;
     }
 
-    /**
-     * Tomar la carta de Waste y colocarla en el Tableau.
-     *
-     * @param tableau donde se moverá la carta
-     * @return true si se pudo move la carta, false si no
-     */
-    public boolean moveWasteToTableau(TableauDeck tableau) {
-        boolean movimientoRealizado = false;
-
-        CartaInglesa carta = wastePile.verCarta();
-        if (moveCartaToTableau(carta, tableau)) {
-            // si es movimiento válido, elimina la carta de la pila
-            carta = wastePile.getCarta();
-            movimientoRealizado = true;
-        }
-        return movimientoRealizado;
-    }
-
-    /**
-     * Tomar una carta de Waste y ponerla en una de las Foundations.
-     *
-     * @return true si se pudo hacer el movimiento.
-     */
     public boolean moveWasteToFoundation() {
         boolean movimientoRealizado = false;
-
         CartaInglesa carta = wastePile.verCarta();
-        if (moveCartaToFoundation(carta)) {
-            // si es movimiento válido, elimina la carta de la pila
+        if (carta != null && moveCartaToFoundation(carta)) {
             carta = wastePile.getCarta();
             movimientoRealizado = true;
+            //registro descarte a base
+            historialMovimientos.push(new Movimiento("WASTE_TO_FOUNDATION", -1, carta.getPalo().ordinal(), 1, false));
         }
         return movimientoRealizado;
     }
@@ -179,7 +175,7 @@ public class SolitaireGame {
      */
     private boolean moveCartaToFoundation(CartaInglesa carta) {
         int cualFoundation = carta.getPalo().ordinal();
-        FoundationDeck destino = foundation.get(cualFoundation);
+        FoundationDeck destino = foundation[cualFoundation];
         lastFoundationUpdated = destino;
         return destino.agregarCarta(carta);
     }
@@ -194,10 +190,10 @@ public class SolitaireGame {
         boolean gameOver = true;
         for (FoundationDeck foundation : foundation) {
             if (foundation.estaVacio()) {
-                gameOver = true;
+                gameOver = false;
             } else {
                 CartaInglesa ultimaCarta = foundation.getUltimaCarta();
-                // si la última carta no es rey, no se ha terminado
+                //si la ultima carta no es rey, no se ha terminado
                 if (ultimaCarta.getValor() != 13) {
                     gameOver = false;
                 }
@@ -207,16 +203,17 @@ public class SolitaireGame {
     }
 
     private void createFoundations() {
+        int i = 0;
         for (Palo palo : Palo.values()) {
-            foundation.add(new FoundationDeck(palo));
+            foundation[i] = new FoundationDeck(palo);
+            i++;
         }
     }
 
     private void createTableaux() {
         for (int i = 0; i < 7; i++) {
-            TableauDeck tableauDeck = new TableauDeck();
-            tableauDeck.inicializar(drawPile.getCartas(i + 1));
-            tableau.add(tableauDeck);
+            tableau[i] = new TableauDeck();
+            tableau[i].inicializar(drawPile.getCartas(i + 1));
         }
     }
 
@@ -224,7 +221,8 @@ public class SolitaireGame {
         return drawPile;
     }
 
-    public ArrayList<TableauDeck> getTableau() {
+    //arreglo normal
+    public TableauDeck[] getTableau() {
         return tableau;
     }
 
@@ -239,14 +237,14 @@ public class SolitaireGame {
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder();
-        // add foundations
+        //bases
         str.append("Foundation\n");
         for (FoundationDeck foundationDeck : foundation) {
             str.append(foundationDeck);
             str.append("\n");
         }
 
-        // add tableaux
+        //tablero
         str.append("\nTableaux\n");
         int tableauNumber = 1;
         for (TableauDeck tableauDeck : tableau) {
@@ -262,10 +260,97 @@ public class SolitaireGame {
         return str.toString();
     }
 
-    //método agregado
-    public ArrayList<FoundationDeck> getFoundations() {
+    public FoundationDeck[] getFoundations() {
         return foundation;
     }
+
+     //deshace el último movimiento registrado en el historial
+    public void undo() {
+        if (historialMovimientos.isEmpty()) {
+            return;
+        }
+
+        Movimiento ultimo = historialMovimientos.pop();
+
+        switch (ultimo.tipoAccion) {
+            case "DRAW":
+                //regresar cartas del descarte a la reserva
+                Pila<CartaInglesa> cartasRegresar = new Pila<>();
+                for (int i = 0; i < ultimo.cantidadCartas; i++) {
+                    CartaInglesa c = wastePile.getCarta();
+                    if (c != null) {
+                        c.makeFaceDown();
+                        cartasRegresar.push(c);
+                    }
+                }
+                Pila<CartaInglesa> tempDraw = drawPile.getCartas(drawPile.hayCartas() ? 52 : 0);
+                while (!cartasRegresar.isEmpty()) tempDraw.push(cartasRegresar.pop());
+                drawPile.recargar(tempDraw);
+                break;
+
+            case "RELOAD":
+                //vaciar la reserva y pasarlo al descarte
+                Pila<CartaInglesa> cartasWaste = new Pila<>();
+                while (drawPile.hayCartas()) {
+                    CartaInglesa c = drawPile.retirarCartas().pop();
+                    cartasWaste.push(c);
+                }
+                wastePile.addCartas(cartasWaste);
+                break;
+
+            case "WASTE_TO_TABLEAU":
+                //quitar del tablero y regresar al descarte
+                CartaInglesa c1 = tableau[ultimo.destino].quitarCartaFuerza();
+                Pila<CartaInglesa> temp1 = new Pila<>();
+                temp1.push(c1);
+                wastePile.addCartas(temp1);
+                break;
+
+            case "TABLEAU_TO_TABLEAU":
+                //ocultar carta en el origen si se había destapado
+                if (ultimo.seDestapoCarta && !tableau[ultimo.origen].isEmpty()) {
+                    tableau[ultimo.origen].getUltimaCarta().makeFaceDown();
+                }
+                //extraer bloque del destino de forma segura
+                Pila<CartaInglesa> temp2 = new Pila<>();
+                for(int i = 0; i < ultimo.cantidadCartas; i++) {
+                    temp2.push(tableau[ultimo.destino].quitarCartaFuerza());
+                }
+                //devolverlas al origen usando el forzado
+                tableau[ultimo.origen].devolverBloque(temp2);
+                break;
+
+            case "TABLEAU_TO_FOUNDATION":
+                //ocultar carta en origen si se había destapado
+                if (ultimo.seDestapoCarta && !tableau[ultimo.origen].isEmpty()) {
+                    tableau[ultimo.origen].verUltimaCarta().makeFaceDown();
+                }
+                //regresar de la base al tablero forzando la entrada
+                CartaInglesa c2 = foundation[ultimo.destino].removerUltimaCarta();
+                tableau[ultimo.origen].devolverCarta(c2);
+                break;
+
+            case "WASTE_TO_FOUNDATION":
+                //regresar de la base al descarte
+                CartaInglesa c3 = foundation[ultimo.destino].removerUltimaCarta();
+                Pila<CartaInglesa> temp3 = new Pila<>();
+                temp3.push(c3);
+                wastePile.addCartas(temp3);
+                break;
+        }
+    }
+
+    public void reiniciarJuego() {
+        drawPile = new DrawPile();
+        wastePile = new WastePile();
+        //vaciamos el historial del undo
+        historialMovimientos.clear();
+
+        createTableaux();
+        createFoundations();
+        wastePile.addCartas(drawPile.retirarCartas());
+    }
+
 
 
 }

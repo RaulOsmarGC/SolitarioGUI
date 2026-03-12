@@ -16,7 +16,7 @@ public class SolitaireApp extends Application {
         SolitaireGame game = new SolitaireGame();
 
         SolitaireBoard root = new SolitaireBoard(game);
-        Scene scene = new Scene(root, 800, 600);
+        Scene scene = new Scene(root, 1080, 600);
 
         primaryStage.setTitle("Solitario ROGC");
         primaryStage.setScene(scene);
