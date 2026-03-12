@@ -2,51 +2,35 @@ package solitaire;
 
 import DeckOfCards.CartaInglesa;
 
-import java.util.ArrayList;
-/**
- * Modela el montículo donde se colocan las cartas
- * que se extraen de Draw pile.
- *
- * @author (Cecilia Curlango Rosas)
- * @version (2025-2)
- */
 public class WastePile {
-    private ArrayList<CartaInglesa> cartas;
+    private Pila<CartaInglesa> cartas;
 
     public WastePile() {
-        cartas = new ArrayList<>();
+        cartas = new Pila<>();
     }
 
-    public void addCartas(ArrayList<CartaInglesa> nuevas) {
-        cartas.addAll(nuevas);
-    }
-
-    public ArrayList<CartaInglesa> emptyPile() {
-        ArrayList<CartaInglesa> pile = new ArrayList<>();
-        if (!cartas.isEmpty()) {
-            pile.addAll(cartas);
-            cartas = new ArrayList<>();
+    public void addCartas(Pila<CartaInglesa> nuevas) {
+        //volteamos las cartas nuevas para que mantengan el orden correcto al apilarlas
+        Pila<CartaInglesa> temporales = nuevas.voltear();
+        while (!temporales.isEmpty()) {
+            cartas.push(temporales.pop());
         }
-        return pile;
     }
 
-    /**
-     * Obtener la última carta sin removerla.
-     * @return Carta que está encima. Si está vacía, es null.
-     */
+    public Pila<CartaInglesa> emptyPile() {
+        Pila<CartaInglesa> pile = new Pila<>();
+        while (!cartas.isEmpty()) {
+            pile.push(cartas.pop());
+        }
+        return pile.voltear(); //restauramos el orden original
+    }
+
     public CartaInglesa verCarta() {
-        CartaInglesa regresar = null;
-        if (!cartas.isEmpty()) {
-            regresar = cartas.getLast();
-        }
-        return regresar;
+        return cartas.peek();
     }
+
     public CartaInglesa getCarta() {
-        CartaInglesa regresar = null;
-        if (!cartas.isEmpty()) {
-            regresar = cartas.removeLast();
-        }
-        return regresar;
+        return cartas.pop();
     }
 
     @Override
@@ -55,7 +39,7 @@ public class WastePile {
         if (cartas.isEmpty()) {
             stb.append("---");
         } else {
-            CartaInglesa regresar = cartas.getLast();
+            CartaInglesa regresar = cartas.peek();
             regresar.makeFaceUp();
             stb.append(regresar.toString());
         }

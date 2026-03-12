@@ -2,111 +2,78 @@ package solitaire;
 
 import DeckOfCards.CartaInglesa;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-
-/**
- * Modela un montículo donde se ponen las cartas
- * de por valor, alternando el color.
- *
- * @author Cecilia M. Curlango
- * @version 2025
- */
 public class TableauDeck {
-    ArrayList<CartaInglesa> cartas = new ArrayList<>();
+    Pila<CartaInglesa> cartas = new Pila<>();
 
-    /**
-     * Carga las cartas iniciales y voltea la última.
-     *
-     * @param cartas iniciales
-     */
-    public void inicializar(ArrayList<CartaInglesa> cartas) {
-        this.cartas = cartas;
-        // voltear la última carta recibida
-        CartaInglesa ultima = cartas.getLast();
-        ultima.makeFaceUp();
+    public void inicializar(Pila<CartaInglesa> cartasIniciales) {
+        this.cartas = cartasIniciales;
+        if (!this.cartas.isEmpty()) {
+            this.cartas.peek().makeFaceUp();
+        }
     }
 
-    /**
-     * Remove cards starting from the one with a specified value.
-     *
-     * @param value of starting card to remove
-     * @return removed cards or empty ArrayList if it is not possible to remove.
-     */
-    public ArrayList<CartaInglesa> removeStartingAt(int value) {
-        ArrayList<CartaInglesa> removed = new ArrayList<>();
-        Iterator<CartaInglesa> iterator = cartas.iterator();
-        while (iterator.hasNext()) {
-            CartaInglesa next = iterator.next();
-            if (next.isFaceup()) {
-                if (next.getValor() <= value) {
-                    removed.add(next);
-                    iterator.remove();
-                }
+    public Pila<CartaInglesa> removeStartingAt(int value) {
+        Pila<CartaInglesa> tempStack = new Pila<>();
+        boolean encontrada = false;
+
+        while (!cartas.isEmpty()) {
+            CartaInglesa top = cartas.pop();
+            tempStack.push(top);
+
+            if (top.isFaceup() && top.getValor() == value) {
+                encontrada = true;
+                break;
             }
         }
-        return removed;
-    }
 
+        if (encontrada) {
+            //tempStack ya tiene la secuencia completa en el orden correcto
+            return tempStack;
+        } else {
+            while (!tempStack.isEmpty()) {
+                cartas.push(tempStack.pop());
+            }
+            return new Pila<>();
+        }
+    }
     public CartaInglesa viewCardStartingAt(int value) {
+        Pila<CartaInglesa> tempStack = new Pila<>();
         CartaInglesa cartaConElValorDeseado = null;
-        for (CartaInglesa next : cartas) {
-            if (next.isFaceup()) {
-                if (next.getValor() <= value) {
-                    cartaConElValorDeseado = next;
-                    break;
-                }
+
+        while (!cartas.isEmpty()) {
+            CartaInglesa top = cartas.pop();
+            tempStack.push(top);
+
+            if (top.isFaceup() && top.getValor() == value) {
+                cartaConElValorDeseado = top;
+                break;
             }
         }
+
+        while (!tempStack.isEmpty()) {
+            cartas.push(tempStack.pop());
+        }
+
         return cartaConElValorDeseado;
     }
 
-    /**
-     * Agrega una carta volteada al montículo. Sólo la agrega si:
-     * A) es la siguiente carta en la secuencia
-     * B) está vacio y la carta es un Rey
-     *
-     * @param carta que se intenta almancenar
-     * @return true si se pudo guardar la carta, false si no
-     */
     public boolean agregarCarta(CartaInglesa carta) {
-        boolean agregado = false;
-
         if (sePuedeAgregarCarta(carta)) {
             carta.makeFaceUp();
-            cartas.add(carta);
-            agregado = true;
+            cartas.push(carta);
+            return true;
         }
-        return agregado;
+        return false;
     }
 
-    /**
-     * Obtener la última carta del montículo sin removerla
-     *
-     * @return la carta que está al final, null si estaba vacio
-     */
     CartaInglesa verUltimaCarta() {
-        CartaInglesa ultimaCarta = null;
-        if (!cartas.isEmpty()) {
-            ultimaCarta = cartas.getLast();
-        }
-        return ultimaCarta;
+        return cartas.peek();
     }
 
-    /**
-     * Remover la última carta del montículo.
-     *
-     * @return la carta que removió, null si estaba vacio
-     */
     CartaInglesa removerUltimaCarta() {
-        CartaInglesa ultimaCarta = null;
-        if (!cartas.isEmpty()) {
-            ultimaCarta = cartas.getLast();
-            cartas.remove(ultimaCarta);
-            /**if (!cartas.isEmpty()) {
-                // voltea la siguiente carta del tableau
-                cartas.getLast().makeFaceUp();
-            }**/
+        CartaInglesa ultimaCarta = cartas.pop();
+        if (ultimaCarta != null && !cartas.isEmpty() && !cartas.peek().isFaceup()) {
+            cartas.peek().makeFaceUp();
         }
         return ultimaCarta;
     }
@@ -117,81 +84,56 @@ public class TableauDeck {
         if (cartas.isEmpty()) {
             builder.append("---");
         } else {
-            for (CartaInglesa carta : cartas) {
-                builder.append(carta.toString());
+            //creamos la pila temporal invertida
+            Pila<CartaInglesa> temporal = cartas.voltear();
+
+            //usamos un while y pop() en lugar del for-each
+            while (!temporal.isEmpty()) {
+                builder.append(temporal.pop().toString());
             }
         }
         return builder.toString();
     }
 
-    /**
-     * Agrega un bloque de cartas al Tableau si la primera carta de las cartas recibidas
-     * es de color alterno a la última carta del tableau y también es la siguiente.
-     *
-     * @param cartasRecibidas
-     * @return true si se pudo agregar el bloque, false si no
-     */
-    public boolean agregarBloqueDeCartas(ArrayList<CartaInglesa> cartasRecibidas) {
-        boolean resultado = false;
-
+    public boolean agregarBloqueDeCartas(Pila<CartaInglesa> cartasRecibidas) {
         if (!cartasRecibidas.isEmpty()) {
-            CartaInglesa primera = cartasRecibidas.getFirst();
-            // si la primera carta del bloque recibido se puede agregar al tableau actual
+            CartaInglesa primera = cartasRecibidas.peek();
             if (sePuedeAgregarCarta(primera)) {
-                // se agrega todo el bloque
-                cartas.addAll(cartasRecibidas);
-                resultado = true;
+                //aquí damos pop y push
+                while (!cartasRecibidas.isEmpty()) {
+                    cartas.push(cartasRecibidas.pop());
+                }
+                return true;
             }
         }
-        return resultado;
+        return false;
     }
 
-    /**
-     * Indica si está vacío  el Tableau
-     *
-     * @return true si no tiene cartas restantes, false si tiene cartas.
-     */
     public boolean isEmpty() {
         return cartas.isEmpty();
     }
 
-    /**
-     * Verifica si la carta que recibe puede ser la siguiente del tableau actual.
-     *
-     * @param cartaInicialDePrueba
-     * @return true si puede ser la siguiente, false si no
-     */
     public boolean sePuedeAgregarCarta(CartaInglesa cartaInicialDePrueba) {
-        boolean resultado = false;
         if (!cartas.isEmpty()) {
-            CartaInglesa ultima = cartas.getLast();
+            CartaInglesa ultima = cartas.peek();
             if (!ultima.getColor().equals(cartaInicialDePrueba.getColor())) {
                 if (ultima.getValor() == cartaInicialDePrueba.getValor() + 1) {
-                    resultado = true;
+                    return true;
                 }
             }
         } else {
-            // Está vacio el tableau, solo se puede agregar la cara si es rey
             if (cartaInicialDePrueba.getValor() == 13) {
-                resultado = true;
+                return true;
             }
         }
-        return resultado;
+        return false;
     }
 
-    /**
-     * Obtiene la última carta del Tableau sin removerla.
-     * @return última carta, null si no hay cartas
-     */
     public CartaInglesa getUltimaCarta() {
-        CartaInglesa ultimaCarta = null;
-        if (!cartas.isEmpty()) {
-            ultimaCarta = cartas.getLast();
-        }
-        return ultimaCarta;
+        return cartas.peek();
     }
 
-    public ArrayList<CartaInglesa> getCards() {
+    public Pila<CartaInglesa> getCards() {
         return cartas;
     }
 }

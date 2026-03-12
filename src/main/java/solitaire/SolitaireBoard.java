@@ -4,6 +4,7 @@ import DeckOfCards.CartaInglesa;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.input.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -51,11 +52,19 @@ public class SolitaireBoard extends BorderPane {
         refreshGame();
     }
 
-    //configura la parte superior mazo, descarte y bases
+    //configura la parte superior mazo, descarte, bases y boton UNDO
     private void setupTopZone() {
         HBox topBox = new HBox(MARGIN);
         topBox.setPadding(new Insets(MARGIN));
         topBox.setAlignment(Pos.CENTER_LEFT);
+
+        //deshacer (solo el botón)
+        Button btnUndo = new Button("Deshacer");
+        btnUndo.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-background-color: #f4a261; -fx-text-fill: white;");
+        btnUndo.setOnAction(e -> {
+            game.undo();
+            refreshGame();
+        });
 
         //zona del mazo
         drawPileView = new StackPane();
@@ -66,7 +75,7 @@ public class SolitaireBoard extends BorderPane {
         wastePileView = new StackPane();
         configureSlot(wastePileView);
 
-        //espaciador invisible para empujar las bases  a la derecha
+        //espaciador invisible para empujar las bases a la derecha
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
@@ -85,7 +94,7 @@ public class SolitaireBoard extends BorderPane {
             foundationBox.getChildren().add(fView);
         }
 
-        topBox.getChildren().addAll(drawPileView, wastePileView, spacer, foundationBox);
+        topBox.getChildren().addAll(btnUndo, drawPileView, wastePileView, spacer, foundationBox);
         this.setTop(topBox);
     }
 
@@ -174,13 +183,11 @@ public class SolitaireBoard extends BorderPane {
             configureSlot(fView);
         }
 
-        //obtenemos el mazo lógico
-        ArrayList<FoundationDeck> foundations = game.getFoundations();
+        //obtenemos el arreglo lógico (ya no es ArrayList)
+        FoundationDeck[] foundations = game.getFoundations();
 
         for (int i = 0; i < 4; i++) {
-            //obtenemos el mazo lógico
-            FoundationDeck deck = foundations.get(i);
-            //obtenemos la vista correspondiente
+            FoundationDeck deck = foundations[i];
             StackPane fView = foundationViews.get(i);
 
             //si hay cartas, dibujamos la última
@@ -191,7 +198,7 @@ public class SolitaireBoard extends BorderPane {
         }
 
         //actualizar columnas/tablero
-        List<TableauDeck> tableaux = game.getTableau();
+        TableauDeck[] tableaux = game.getTableau();
         for (int i = 0; i < 7; i++) {
             VBox tView = tableauViews.get(i);
             var placeholder = tView.getChildren().get(0);
@@ -199,9 +206,12 @@ public class SolitaireBoard extends BorderPane {
             //mantener el placeholder al fondo
             tView.getChildren().add(placeholder);
 
-            TableauDeck deck = tableaux.get(i);
+            TableauDeck deck = tableaux[i];
 
-            for (CartaInglesa carta : deck.getCards()) {
+            //reemplazamos el for-each por el while con la pila volteada
+            Pila<CartaInglesa> temporal = deck.getCards().voltear();
+            while (!temporal.isEmpty()) {
+                CartaInglesa carta = temporal.pop();
                 CardView cv = new CardView(carta);
 
                 //solo las cartas boca arriba se pueden arrastrar
