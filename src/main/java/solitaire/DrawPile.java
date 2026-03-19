@@ -57,11 +57,21 @@ public class DrawPile {
     public void recargar(Pila<CartaInglesa> cartasAgregar) {
         cartas.clear();
 
-        Pila<CartaInglesa> temporal = cartasAgregar.voltear();
-        while (!temporal.isEmpty()) {
-            CartaInglesa aCarta = temporal.pop();
-            aCarta.makeFaceDown();
-            cartas.push(aCarta);
+        //volteamos la pila para no arruinar el orden que ya traía del WastePile
+        Pila<CartaInglesa> ordenadas = cartasAgregar.voltear();
+
+        while (!ordenadas.isEmpty()) {
+            CartaInglesa c = ordenadas.pop();
+            c.makeFaceDown();
+            cartas.push(c);
+        }
+    }
+
+    public void devolverCartasFuerza(Pila<CartaInglesa> bloque) {
+        while (!bloque.isEmpty()) {
+            CartaInglesa c = bloque.pop();
+            c.makeFaceDown();
+            cartas.push(c);
         }
     }
 

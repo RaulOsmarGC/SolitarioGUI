@@ -13,7 +13,7 @@ public class Mazo {
 
     public Mazo() {
         llenar(); // crea todas las cartas, excluyendo Jokers
-        mezclar();
+        //mezclar();
     }
 
     /**
@@ -30,10 +30,10 @@ public class Mazo {
         }
         return null;
     }
-    private void mezclar() {
+    /*private void mezclar() {
         Collections.shuffle(cartas);
     }
-
+*/
     private void llenar() {
         for (int i = 2; i <=14 ; i++) {
             for (Palo palo : Palo.values()) {

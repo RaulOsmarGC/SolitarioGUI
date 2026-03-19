@@ -27,19 +27,22 @@ public class SolitaireGame {
         wastePile.addCartas(drawPile.retirarCartas());
     }
 
-    //mueve cartas del descarte a la de reserva
-    public void reloadDrawPile() {
-        Pila<CartaInglesa> cards = wastePile.emptyPile();
-        drawPile.recargar(cards);
-        historialMovimientos.push(new Movimiento("RELOAD", -1, -1, cards.size(), false));
-    }
-
-
-    //mueve cartas de la reserva al descrate
     public void drawCards() {
         Pila<CartaInglesa> cards = drawPile.retirarCartas();
+        //guardamos el tamaño antes de enviar la pila
+        int cantidadMovida = cards.size();
         wastePile.addCartas(cards);
-        historialMovimientos.push(new Movimiento("DRAW", -1, -1, cards.size(), false));
+        //usamos la variable guardada
+        historialMovimientos.push(new Movimiento("DRAW", -1, -1, cantidadMovida, false));
+    }
+
+    public void reloadDrawPile() {
+        Pila<CartaInglesa> cards = wastePile.emptyPile();
+        //guardamos el tamaño antes de enviar la pila
+        int cantidadMovida = cards.size();
+        drawPile.recargar(cards);
+        //usamos la variable guardada
+        historialMovimientos.push(new Movimiento("RELOAD", -1, -1, cantidadMovida, false));
     }
 
     //tomar la carta de la pila de descarte y ponerla en el tablero
@@ -140,7 +143,7 @@ public class SolitaireGame {
             //registramos el movimiento
             historialMovimientos.push(new Movimiento("TABLEAU_TO_FOUNDATION", numero - 1, carta.getPalo().ordinal(), 1, destaparaCarta));
         }
-        //si la base no la acepto, no hacemos NADA
+        //si la base no la acepto, no hacemos nada
         return movimientoRealizado;
     }
 
@@ -221,7 +224,7 @@ public class SolitaireGame {
         return drawPile;
     }
 
-    //arreglo normal
+    //arreglos
     public TableauDeck[] getTableau() {
         return tableau;
     }
@@ -274,30 +277,32 @@ public class SolitaireGame {
 
         switch (ultimo.tipoAccion) {
             case "DRAW":
-                //regresar cartas del descarte a la reserva
+                //regresar cartas del descarte a la pila de reserva
                 Pila<CartaInglesa> cartasRegresar = new Pila<>();
                 for (int i = 0; i < ultimo.cantidadCartas; i++) {
                     CartaInglesa c = wastePile.getCarta();
                     if (c != null) {
-                        c.makeFaceDown();
                         cartasRegresar.push(c);
                     }
                 }
-                Pila<CartaInglesa> tempDraw = drawPile.getCartas(drawPile.hayCartas() ? 52 : 0);
-                while (!cartasRegresar.isEmpty()) tempDraw.push(cartasRegresar.pop());
-                drawPile.recargar(tempDraw);
+                //mantener el orden original exacto
+                drawPile.devolverCartasFuerza(cartasRegresar.voltear());
                 break;
 
             case "RELOAD":
-                //vaciar la reserva y pasarlo al descarte
-                Pila<CartaInglesa> cartasWaste = new Pila<>();
+                //extrae las cartas de la pila de reserva
+                Pila<CartaInglesa> recuperadas = new Pila<>();
                 while (drawPile.hayCartas()) {
-                    CartaInglesa c = drawPile.retirarCartas().pop();
-                    cartasWaste.push(c);
+                    Pila<CartaInglesa> cartaUnica = drawPile.getCartas(1);
+                    if (!cartaUnica.isEmpty()) {
+                        CartaInglesa c = cartaUnica.pop();
+                        c.makeFaceUp();
+                        recuperadas.push(c);
+                    }
                 }
-                wastePile.addCartas(cartasWaste);
+                //las devolvemos a la pila de descaarte para que el tablero regrese a la normalidad
+                wastePile.addCartas(recuperadas.voltear());
                 break;
-
             case "WASTE_TO_TABLEAU":
                 //quitar del tablero y regresar al descarte
                 CartaInglesa c1 = tableau[ultimo.destino].quitarCartaFuerza();
@@ -307,7 +312,7 @@ public class SolitaireGame {
                 break;
 
             case "TABLEAU_TO_TABLEAU":
-                //ocultar carta en el origen si se había destapado
+                //ocultar carta en el origen si se habia destapado
                 if (ultimo.seDestapoCarta && !tableau[ultimo.origen].isEmpty()) {
                     tableau[ultimo.origen].getUltimaCarta().makeFaceDown();
                 }
@@ -321,7 +326,7 @@ public class SolitaireGame {
                 break;
 
             case "TABLEAU_TO_FOUNDATION":
-                //ocultar carta en origen si se había destapado
+                //ocultar carta en origen si se habia destapado
                 if (ultimo.seDestapoCarta && !tableau[ultimo.origen].isEmpty()) {
                     tableau[ultimo.origen].verUltimaCarta().makeFaceDown();
                 }

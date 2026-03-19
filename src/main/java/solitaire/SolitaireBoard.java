@@ -52,6 +52,10 @@ public class SolitaireBoard extends BorderPane {
                 game.reiniciarJuego();
                 refreshGame();
             }
+            if (e.getCode() == KeyCode.Z) {
+                game.undo();
+                refreshGame();
+            }
         });
 
         //si haces clic en el fondo de la mesa, aseguras que el teclado siga activo
@@ -72,7 +76,7 @@ public class SolitaireBoard extends BorderPane {
         topBox.setAlignment(Pos.CENTER_LEFT);
 
         //boton de deshacer o undo
-        Button btnUndo = new Button("Deshacer");
+        Button btnUndo = new Button("Deshacer (Z)");
         btnUndo.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-background-color: #f4a261; -fx-text-fill: white;");
         btnUndo.setOnAction(e -> {
             game.undo();

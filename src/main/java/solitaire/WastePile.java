@@ -10,19 +10,18 @@ public class WastePile {
     }
 
     public void addCartas(Pila<CartaInglesa> nuevas) {
-        //volteamos las cartas nuevas para que mantengan el orden correcto al apilarlas
-        Pila<CartaInglesa> temporales = nuevas.voltear();
-        while (!temporales.isEmpty()) {
-            cartas.push(temporales.pop());
+        while (!nuevas.isEmpty()) {
+            cartas.push(nuevas.pop());
         }
     }
 
     public Pila<CartaInglesa> emptyPile() {
-        Pila<CartaInglesa> pile = new Pila<>();
+        Pila<CartaInglesa> temporal = new Pila<>();
+        //esto saca las cartas y las invierte
         while (!cartas.isEmpty()) {
-            pile.push(cartas.pop());
+            temporal.push(cartas.pop());
         }
-        return pile.voltear(); //restauramos el orden original
+        return temporal;
     }
 
     public CartaInglesa verCarta() {
